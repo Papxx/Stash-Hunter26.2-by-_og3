@@ -20,7 +20,7 @@
     ]
   },
   "mixins": [
-    "addon-template.mixins.json"
+    "stash-hunter.mixins.json"
   ],
   "custom": {
     "meteor-client:color": "225,25,25"

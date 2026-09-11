@@ -13,8 +13,6 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFly;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 public class StuckDetector extends Module {
@@ -26,7 +24,7 @@ public class StuckDetector extends Module {
         .defaultValue(Config.stuckDetectorWebhookUrl)
         .onChanged(v -> {
             Config.stuckDetectorWebhookUrl = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -39,7 +37,7 @@ public class StuckDetector extends Module {
         .sliderMax(10)
         .onChanged(v -> {
             Config.stuckDetectorThreshold = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -50,7 +48,7 @@ public class StuckDetector extends Module {
         .defaultValue(Config.stuckDetectorAutoFix)
         .onChanged(v -> {
             Config.stuckDetectorAutoFix = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -179,7 +177,7 @@ public class StuckDetector extends Module {
                         fixCooldown = 200;
                     }
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    StashHunter.LOG.error("Stuck-recovery thread interrupted", e);
                 }
             }).start();
         }

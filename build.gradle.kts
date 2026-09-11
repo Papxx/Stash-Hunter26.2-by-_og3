@@ -39,6 +39,16 @@ repositories {
         name = "Fabric"
         url = uri("https://maven.fabricmc.net/")
     }
+    // Same exclusiveContent reasoning as above, for JUnit's groups specifically: without this,
+    // Gradle can probe Loom's Mojang-libraries repo for JUnit too before reaching Maven Central.
+    exclusiveContent {
+        forRepository { mavenCentral() }
+        filter {
+            includeGroupAndSubgroups("org.junit")
+            includeGroup("org.opentest4j")
+            includeGroup("org.apiguardian")
+        }
+    }
     mavenCentral()
 }
 
@@ -71,6 +81,13 @@ dependencies {
 
     // GSON
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Tests - only for pure-logic helpers (TrailMath, StashHunterModule's clustering, WorldScanner's
+    // bounding-box math) that don't touch live Minecraft/Meteor state. The test source set
+    // automatically inherits main's compile classpath (Minecraft/Fabric/Meteor), so this needs no
+    // extra sourceSets wiring.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 java {
@@ -98,7 +115,7 @@ tasks {
     jar {
         inputs.property("archivesName", archivesBaseName)
 
-        from("LICENSE") {
+        from(listOf("LICENSE", "NOTICE")) {
             rename { "${it}_${archivesBaseName}" }
         }
     }
@@ -107,5 +124,9 @@ tasks {
         options.encoding = "UTF-8"
         options.compilerArgs.add("-Xlint:deprecation")
         options.compilerArgs.add("-Xlint:unchecked")
+    }
+
+    test {
+        useJUnitPlatform()
     }
 }

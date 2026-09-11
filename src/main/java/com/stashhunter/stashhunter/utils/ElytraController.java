@@ -393,7 +393,7 @@ public class ElytraController {
                     ChunkPos c3 = chunks.get(k);
 
                     // Calculate if these three chunks are roughly collinear
-                    double linearity = calculateLinearity(c1, c2, c3);
+                    double linearity = TrailMath.calculateLinearity(c1, c2, c3);
 
                     if (linearity > 0.7) { // Threshold for considering chunks "linear"
                         TrailInfo trail = new TrailInfo();
@@ -443,7 +443,7 @@ public class ElytraController {
 
         if (validDirections >= 2) {
             Vec3 finalDirection = avgDirection.scale(1.0 / validDirections);
-            double consistency = calculateDirectionConsistency(chunks, finalDirection);
+            double consistency = TrailMath.calculateDirectionConsistency(chunks, finalDirection);
 
             if (consistency > 0.6) {
                 TrailInfo trail = new TrailInfo();
@@ -459,46 +459,6 @@ public class ElytraController {
         }
 
         return null;
-    }
-
-    private static double calculateLinearity(ChunkPos c1, ChunkPos c2, ChunkPos c3) {
-        // Calculate how close three points are to forming a straight line
-        // Using the cross product method to find deviation from straight line
-
-        Vec3 v1 = new Vec3(c2.x() - c1.x(), 0, c2.z() - c1.z());
-        Vec3 v2 = new Vec3(c3.x() - c2.x(), 0, c3.z() - c2.z());
-
-        if (v1.lengthSqr() < 0.01 || v2.lengthSqr() < 0.01) {
-            return 0; // Points too close together
-        }
-
-        // Calculate angle between vectors
-        double dot = v1.normalize().dot(v2.normalize());
-        dot = Math.max(-1.0, Math.min(1.0, dot)); // Clamp to valid range
-
-        double angle = Math.acos(Math.abs(dot));
-        double linearity = 1.0 - (angle / (Math.PI / 2)); // 1.0 = perfectly linear, 0.0 = perpendicular
-
-        return Math.max(0, linearity);
-    }
-
-    private static double calculateDirectionConsistency(List<ChunkPos> chunks, Vec3 targetDirection) {
-        double totalConsistency = 0;
-        int comparisons = 0;
-
-        for (int i = 0; i < chunks.size() - 1; i++) {
-            ChunkPos from = chunks.get(i);
-            ChunkPos to = chunks.get(i + 1);
-
-            Vec3 direction = new Vec3(to.x() - from.x(), 0, to.z() - from.z());
-            if (direction.lengthSqr() > 0) {
-                double dot = direction.normalize().dot(targetDirection.normalize());
-                totalConsistency += Math.max(0, dot); // Only positive correlations
-                comparisons++;
-            }
-        }
-
-        return comparisons > 0 ? totalConsistency / comparisons : 0;
     }
 
     private static ChunkBoundaryInfo checkForBoundaries(Vec3 playerPos) {

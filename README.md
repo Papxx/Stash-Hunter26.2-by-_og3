@@ -210,6 +210,23 @@ The `StashHunterHud` provides real-time information about the status of the Stas
 -   **Target Information**: When active, it shows the coordinates of the current target and the distance to it.
 -   **Progress**: Displays the progress of the current scanning mission in the format of `current waypoint / total waypoints`.
 
+## How it works
+
+A quick conceptual overview of the two heuristics that do the actual "finding":
+
+**Chunk trail following** (`NewerNewChunks` + `ElytraController`): every incoming chunk is classified as "new" or "old" by looking at its generation (freshly generated sections tend to have distinctive block patterns compared to sections generated in an earlier server version or session). The bot tracks recently-seen new chunks around the player and looks for a *pattern* in them - roughly:
+
+```
+if 3+ new chunks nearby form a straight line  -> follow that line (likely a corridor/road/rail)
+else if new chunks show a consistent direction -> follow that direction (likely a player's flight path)
+else                                            -> keep flying the current grid pattern
+```
+The idea: players don't generate new chunks randomly - they fly/walk in relatively straight lines toward their base, so a line or consistent direction of freshly-generated chunks is a strong signal of "a player went this way recently."
+
+**Cluster/stash detection** (`StashHunterModule`): every scan interval, nearby chunks are checked for valuable blocks (chests, shulkers, etc. - see the block lists in `Config`). Found blocks are grouped into clusters using simple distance-based chaining (any two blocks within `max-cluster-distance` of each other join the same cluster, transitively). Each cluster is then scored by its density (`block count / bounding box volume`) and checked against `max-volume-threshold`/`min-density-threshold` to filter out large, sparse natural structures (dungeons, mineshafts) from small, dense player bases.
+
+**Note on `stash-hunter.properties`**: this file stores your Discord webhook URL(s) in plain text. Treat it like any other secret/API key - don't share it or commit it to a repository.
+
 ## Building
 
 To build this project from source, you will need:
@@ -243,7 +260,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a history of notable changes.
 
 ## License
 
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for more details, and [NOTICE](NOTICE) for third-party attributions (BleachHack, Baritone).
 
 ## Credits
 

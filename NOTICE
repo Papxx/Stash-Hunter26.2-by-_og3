@@ -1,0 +1,27 @@
+Stash Hunter (StashhunterPort by _og3)
+Copyright 2025 omtoi
+Copyright 2026 _og3
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+This is a fork/port of the original Stash-Hunter addon by omtoi
+(https://github.com/omtoi101/Stash-Hunter), ported to Minecraft 26.2
+and the latest Meteor Client, and maintained by _og3.
+
+--------------------------------------------------------------------------
+
+Third-party attributions:
+
+* src/main/java/com/stashhunter/stashhunter/modules/NewerNewChunks.java
+  is ported from BleachHack's NewChunks module:
+  https://github.com/BleachDrinker420/BleachHack/blob/master/BleachHack-Fabric-1.16/src/main/java/bleach/hack/module/mods/NewChunks.java
+  (updated by etianl). No explicit license was stated at that source
+  location at the time of porting.
+
+* Baritone (https://github.com/MeteorDevelopment/baritone) is an
+  optional runtime dependency used, if installed separately by the user,
+  for more precise pathfinding (see com.stashhunter.stashhunter.baritone).
+  It is licensed under the GNU Lesser General Public License v3.0 and is
+  NOT bundled with or distributed as part of this addon - it is compiled
+  against only (compileOnly) and must be installed separately.

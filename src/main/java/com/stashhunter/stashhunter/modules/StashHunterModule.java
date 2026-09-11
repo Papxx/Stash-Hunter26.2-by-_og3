@@ -2,14 +2,12 @@ package com.stashhunter.stashhunter.modules;
 
 import com.stashhunter.stashhunter.StashHunter;
 import com.stashhunter.stashhunter.baritone.BaritoneBridge;
-import com.stashhunter.stashhunter.events.PlayerDeathEvent;
 import com.stashhunter.stashhunter.events.PlayerDisconnectEvent;
 import com.stashhunter.stashhunter.utils.Config;
 import com.stashhunter.stashhunter.utils.DiscordEmbed;
 import com.stashhunter.stashhunter.utils.DiscordWebhook;
 import com.stashhunter.stashhunter.utils.ElytraController;
 import com.stashhunter.stashhunter.utils.WorldScanner;
-import com.stashhunter.stashhunter.modules.AutoElytraRepair;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.settings.*;
@@ -20,7 +18,6 @@ import meteordevelopment.orbit.EventHandler;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -46,7 +43,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.discordWebhookUrl)
         .onChanged(v -> {
             Config.discordWebhookUrl = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -59,7 +56,7 @@ public class StashHunterModule extends Module {
         .sliderMax(50)
         .onChanged(v -> {
             Config.blockDetectionThreshold = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -72,7 +69,7 @@ public class StashHunterModule extends Module {
         .sliderMax(256)
         .onChanged(v -> {
             Config.scanRadius = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -83,7 +80,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.storageOnlyMode)
         .onChanged(v -> {
             Config.storageOnlyMode = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -96,7 +93,7 @@ public class StashHunterModule extends Module {
         .sliderMax(50000)
         .onChanged(v -> {
             Config.maxVolumeThreshold = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -107,7 +104,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.filterNaturalStructures)
         .onChanged(v -> {
             Config.filterNaturalStructures = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -120,7 +117,7 @@ public class StashHunterModule extends Module {
         .sliderMax(0.1)
         .onChanged(v -> {
             Config.minDensityThreshold = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -133,7 +130,7 @@ public class StashHunterModule extends Module {
         .sliderMax(0.1)
         .onChanged(v -> {
             Config.notificationDensityThreshold = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -146,7 +143,7 @@ public class StashHunterModule extends Module {
         .sliderMax(200)
         .onChanged(v -> {
             Config.maxClusterDistance = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -159,7 +156,7 @@ public class StashHunterModule extends Module {
         .sliderMax(400)
         .onChanged(v -> {
             Config.flightAltitude = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -172,7 +169,7 @@ public class StashHunterModule extends Module {
         .sliderMax(100)
         .onChanged(v -> {
             Config.scanInterval = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -183,7 +180,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.playerDetection)
         .onChanged(v -> {
             Config.playerDetection = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -194,7 +191,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.notifyOnDeath)
         .onChanged(v -> {
             Config.notifyOnDeath = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -205,7 +202,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.notifyOnCompletion)
         .onChanged(v -> {
             Config.notifyOnCompletion = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -216,7 +213,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.notifyOnDisconnect)
         .onChanged(v -> {
             Config.notifyOnDisconnect = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -227,7 +224,7 @@ public class StashHunterModule extends Module {
         .defaultValue(Config.useBaritonePathing)
         .onChanged(v -> {
             Config.useBaritonePathing = v;
-            Config.save();
+            Config.scheduleSave();
         })
         .build()
     );
@@ -235,6 +232,12 @@ public class StashHunterModule extends Module {
     // State
     private final Map<Player, Long> reportedPlayers = new ConcurrentHashMap<>();
     private final List<BlockPos> reportedStashes = new ArrayList<>();
+    // Skips re-scanning a chunk we already scanned very recently - the scan area mostly
+    // overlaps between consecutive scan ticks while flying, so this avoids redundant work
+    // without risking missing anything (a genuinely new stash needs more than a few seconds
+    // of world generation to appear anyway).
+    private final Map<ChunkPos, Long> lastScannedAt = new ConcurrentHashMap<>();
+    private static final long CHUNK_SCAN_COOLDOWN_MS = 15_000;
     private int tickCounter = 0;
     private int lastHealthCheck = -1; // Track health for death detection
     private int elytraBrokenTicks = 0;
@@ -424,6 +427,7 @@ if (ElytraController.isActive()) {
         // Clean up old reported bases every 10 minutes
         if (tickCounter % 12000 == 0) {
             reportedStashes.clear();
+            lastScannedAt.clear();
         }
 
         // Check if ElytraController completed and send notification
@@ -440,6 +444,17 @@ if (ElytraController.isActive()) {
         }
     }
 
+    /**
+     * True if {@code pos} hasn't been scanned within {@link #CHUNK_SCAN_COOLDOWN_MS}. Also
+     * records the current time as this chunk's last-scanned timestamp as a side effect, since
+     * every caller immediately proceeds to scan it when this returns true.
+     */
+    private boolean shouldScanChunk(ChunkPos pos) {
+        long now = System.currentTimeMillis();
+        Long last = lastScannedAt.put(pos, now);
+        return last == null || (now - last) > CHUNK_SCAN_COOLDOWN_MS;
+    }
+
     private void scanForBlocks() {
         if (mc.player == null || mc.level == null) return;
 
@@ -453,6 +468,9 @@ if (ElytraController.isActive()) {
         for (int x = -chunkRadius; x <= chunkRadius; x++) {
             for (int z = -chunkRadius; z <= chunkRadius; z++) {
                 ChunkPos chunkPos = new ChunkPos(playerChunk.x() + x, playerChunk.z() + z);
+
+                if (!shouldScanChunk(chunkPos)) continue;
+
                 LevelChunk chunk = mc.level.getChunk(chunkPos.x(), chunkPos.z());
 
                 if (chunk != null) {
@@ -474,9 +492,12 @@ if (ElytraController.isActive()) {
     }
 
     /**
-     * Groups nearby blocks into clusters to separate stashes from natural structures
+     * Groups nearby blocks into clusters to separate stashes from natural structures.
+     *
+     * <p>Package-private and {@code static}: pure function of its arguments (no instance/live
+     * state), which keeps it directly unit-testable without constructing a {@code Module}.
      */
-    private List<List<BlockPos>> clusterBlocks(List<BlockPos> blocks, int maxDistance) {
+    static List<List<BlockPos>> clusterBlocks(List<BlockPos> blocks, int maxDistance) {
         List<List<BlockPos>> clusters = new ArrayList<>();
         List<BlockPos> unprocessed = new ArrayList<>(blocks);
 
@@ -649,8 +670,17 @@ if (ElytraController.isActive()) {
         }
     }
 
-    private BlockPos calculateStashCenter(List<BlockPos> blocks) {
-        if (blocks.isEmpty()) return mc.player.blockPosition();
+    /**
+     * Package-private and {@code static} for the same reason as {@link #clusterBlocks}. The
+     * only caller ({@link #processCluster}) always passes a non-empty cluster - every cluster
+     * starts by seeding with at least one block - so an empty list here means a caller bug, not
+     * something to paper over with an arbitrary fallback (the previous {@code mc.player}
+     * fallback masked that and made this method depend on live player state for no real reason).
+     */
+    static BlockPos calculateStashCenter(List<BlockPos> blocks) {
+        if (blocks.isEmpty()) {
+            throw new IllegalArgumentException("calculateStashCenter requires a non-empty block list");
+        }
 
         int totalX = 0, totalY = 0, totalZ = 0;
         for (BlockPos pos : blocks) {

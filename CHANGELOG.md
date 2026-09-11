@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `utils/TrailMath.java`: pure trail-geometry helpers (`calculateLinearity`, `calculateDirectionConsistency`) extracted out of `ElytraController`, plus JUnit 5 tests for them and for `StashHunterModule`'s clustering helpers and `WorldScanner`'s bounding-box math (`src/test/java`, `.\gradlew.bat test`).
+- `NOTICE` file (BleachHack/Baritone attribution), filled in the previously-blank `LICENSE` copyright line.
+- README "How it works" section explaining the trail-following and clustering heuristics; note that `stash-hunter.properties` stores webhook URLs in plain text.
+- Chunk-scan cooldown in `StashHunterModule` (skips re-scanning a chunk within 15s of its last scan) to cut redundant work.
+- `BaritoneBridge` now also probes `baritone.api.BaritoneAPI` directly and logs a one-time warning on an unexpected Baritone version.
+
+### Changed
+
+- `Config`'s settings fields are now `volatile` (read from background Discord-webhook threads while written from the tick thread) and saves are debounced (`Config.scheduleSave()`, ~1s) instead of writing to disk on every single setting change.
+- Replaced `System.err`/`printStackTrace()` with `StashHunter.LOG` (slf4j) across `Config`, `NewerNewChunks`, `StuckDetector`, `DiscordWebhook`, and `TripManager`.
+- `StashHunterModule.clusterBlocks`/`calculateStashCenter` are now `static` (verified stateless); `calculateStashCenter` throws `IllegalArgumentException` on an empty list instead of silently falling back to the player's position.
+- Renamed the leftover-template `addon-template.mixins.json` to `stash-hunter.mixins.json`.
+
+### Removed
+
+- Unused imports (`KeyMapping`, `Items`, `PlayerDeathEvent`, a same-package `AutoElytraRepair` import) across `StashHunterModule`/`StuckDetector`.
+
 ## [v26.2.1] - 2026-09-11
 
 ### Added

@@ -8,41 +8,65 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
+import com.stashhunter.stashhunter.StashHunter;
 import meteordevelopment.meteorclient.MeteorClient;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+/**
+ * Persisted Stash Hunter settings, backed by {@code stash-hunter.properties} in the Meteor
+ * Client folder. Fields are {@code volatile}: they're read from background threads (Discord
+ * webhook senders in {@link DiscordWebhook} run on their own {@link Thread}) while being written
+ * from the client tick/render thread via Meteor's {@code onChanged} setting callbacks, so plain
+ * (non-volatile) fields would not guarantee those writes become visible to other threads.
+ *
+ * <p><b>Note:</b> {@code stash-hunter.properties} stores webhook URLs in plain text. Don't share
+ * or commit that file - it's a local secret, same as any other API key or token.
+ */
 public class Config {
     private static final File CONFIG_FILE = new File(MeteorClient.FOLDER, "stash-hunter.properties");
     private static final Properties properties = new Properties();
 
+    // Debounces save() so rapid successive setting changes (e.g. dragging a slider) don't each
+    // trigger a synchronous file write - only the last change in a 1s window is actually saved.
+    private static final ScheduledExecutorService SAVE_EXECUTOR = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "stash-hunter-config-save");
+        t.setDaemon(true);
+        return t;
+    });
+    private static ScheduledFuture<?> pendingSave;
+
     // Default configuration values
-    public static String discordWebhookUrl = "";
-    public static int blockDetectionThreshold = 10; // Increased from 8 to reduce false positives
-    public static int scanRadius = 64; // Reduced from 128 to avoid natural structures
-    public static int flightAltitude = 160;
-    public static int scanInterval = 40;
-    public static boolean playerDetection = true;
-    public static boolean notifyOnDeath = true;
-    public static boolean notifyOnCompletion = true; // New setting for completion notifications
-    public static boolean notifyOnDisconnect = true;
-    public static boolean storageOnlyMode = true; // Storage-only detection by default
-    public static int maxVolumeThreshold = 5000; // Reduced from 10000 - more aggressive filtering
-    public static boolean filterNaturalStructures = true;
-    public static double minDensityThreshold = 0.002; // New setting for minimum density
-    public static double notificationDensityThreshold = 0.005; // New setting for Discord notification threshold
-    public static int maxClusterDistance = 30; // New setting for clustering blocks
+    public static volatile String discordWebhookUrl = "";
+    public static volatile int blockDetectionThreshold = 10; // Increased from 8 to reduce false positives
+    public static volatile int scanRadius = 64; // Reduced from 128 to avoid natural structures
+    public static volatile int flightAltitude = 160;
+    public static volatile int scanInterval = 40;
+    public static volatile boolean playerDetection = true;
+    public static volatile boolean notifyOnDeath = true;
+    public static volatile boolean notifyOnCompletion = true; // New setting for completion notifications
+    public static volatile boolean notifyOnDisconnect = true;
+    public static volatile boolean storageOnlyMode = true; // Storage-only detection by default
+    public static volatile int maxVolumeThreshold = 5000; // Reduced from 10000 - more aggressive filtering
+    public static volatile boolean filterNaturalStructures = true;
+    public static volatile double minDensityThreshold = 0.002; // New setting for minimum density
+    public static volatile double notificationDensityThreshold = 0.005; // New setting for Discord notification threshold
+    public static volatile int maxClusterDistance = 30; // New setting for clustering blocks
 
     // Stuck Detector settings
-    public static String stuckDetectorWebhookUrl = "";
-    public static int stuckDetectorThreshold = 3;
-    public static boolean stuckDetectorAutoFix = true;
+    public static volatile String stuckDetectorWebhookUrl = "";
+    public static volatile int stuckDetectorThreshold = 3;
+    public static volatile boolean stuckDetectorAutoFix = true;
 
     // Use Baritone (if installed) for flight/ground path execution instead of the built-in
     // flight controller. Purely a manual override - ElytraController falls back automatically
     // when Baritone isn't installed regardless of this setting.
-    public static boolean useBaritonePathing = true;
+    public static volatile boolean useBaritonePathing = true;
 
 
     // Storage containers only (for stash finding)
@@ -130,13 +154,25 @@ public class Config {
                 useBaritonePathing = getBoolProperty("useBaritonePathing", true);
 
             } catch (IOException e) {
-                System.err.println("Failed to load Stash-Hunter config: " + e.getMessage());
-                e.printStackTrace();
+                StashHunter.LOG.error("Failed to load Stash-Hunter config: {}", e.getMessage(), e);
             }
         } else {
             // Create config file with defaults if it doesn't exist
             save();
         }
+    }
+
+    /**
+     * Schedules a {@link #save()} ~1s from now, cancelling any not-yet-run save already
+     * scheduled. Use this from setting {@code onChanged} callbacks instead of calling
+     * {@link #save()} directly, so rapidly changing a setting (e.g. dragging a slider) results
+     * in one debounced write instead of one synchronous file write per change.
+     */
+    public static synchronized void scheduleSave() {
+        if (pendingSave != null) {
+            pendingSave.cancel(false);
+        }
+        pendingSave = SAVE_EXECUTOR.schedule(Config::save, 1, TimeUnit.SECONDS);
     }
 
     public static void save() {
@@ -173,8 +209,7 @@ public class Config {
                 properties.store(fos, "Stash-Hunter Configuration - Auto-generated");
             }
         } catch (IOException e) {
-            System.err.println("Failed to save Stash-Hunter config: " + e.getMessage());
-            e.printStackTrace();
+            StashHunter.LOG.error("Failed to save Stash-Hunter config: {}", e.getMessage(), e);
         }
     }
 
@@ -182,7 +217,7 @@ public class Config {
         try {
             return Integer.parseInt(properties.getProperty(key, String.valueOf(defaultValue)));
         } catch (NumberFormatException e) {
-            System.err.println("Invalid integer value for " + key + ", using default: " + defaultValue);
+            StashHunter.LOG.warn("Invalid integer value for {}, using default: {}", key, defaultValue);
             return defaultValue;
         }
     }
@@ -195,7 +230,7 @@ public class Config {
         try {
             return Double.parseDouble(properties.getProperty(key, String.valueOf(defaultValue)));
         } catch (NumberFormatException e) {
-            System.err.println("Invalid double value for " + key + ", using default: " + defaultValue);
+            StashHunter.LOG.warn("Invalid double value for {}, using default: {}", key, defaultValue);
             return defaultValue;
         }
     }

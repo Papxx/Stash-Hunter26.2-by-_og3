@@ -424,7 +424,7 @@ public class NewerNewChunks extends Module {
 			try {
 				Files.createDirectories(Paths.get("StashHunter", "NewChunks", serverip, world));
 			} catch (IOException e) {
-				e.printStackTrace();
+				StashHunter.LOG.error("Failed to create NewChunks directory", e);
 			}
 		}
 
@@ -445,7 +445,7 @@ public class NewerNewChunks extends Module {
 						Files.createFile(fullPath);
 					}
 				} catch (IOException e) {
-					e.printStackTrace();
+					StashHunter.LOG.error("Failed to create chunk data file: {}", fullPath, e);
 				}
 			}
 		}
@@ -506,7 +506,7 @@ public class NewerNewChunks extends Module {
 				Files.deleteIfExists(Paths.get("StashHunter", "NewChunks", serverip, world, "OldGenerationChunkData.txt"));
 				Files.deleteIfExists(Paths.get("StashHunter", "NewChunks", serverip, world, "BlockExploitChunkData.txt"));
 			} catch (IOException e) {
-				e.printStackTrace();
+				StashHunter.LOG.error("Failed to delete chunk data files", e);
 			}
 			error("Chunk Data deleted for this Dimension.");
 			deletewarning=0;
@@ -959,7 +959,7 @@ public class NewerNewChunks extends Module {
 				}
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			StashHunter.LOG.error("Failed to load chunk data from {}", savedDataLocation, e);
 		}
 	}
 	private void saveData(Path savedDataLocation, ChunkPos chunkpos) {
@@ -974,7 +974,7 @@ public class NewerNewChunks extends Module {
 					StandardOpenOption.CREATE,
 					StandardOpenOption.APPEND);
 		} catch (IOException e) {
-			e.printStackTrace();
+			StashHunter.LOG.error("Failed to save chunk data to {}", savedDataLocation, e);
 		}
 	}
 	private void removeChunksOutsideRenderDistance() {

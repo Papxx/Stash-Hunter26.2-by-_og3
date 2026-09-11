@@ -11,7 +11,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(LivingEntity.class)
+// Explicit priority (default is 1000, stated here for clarity): this mixin only injects a HEAD
+// callback and never touches control flow another mixin on LivingEntity.die() might rely on, so
+// leaving it at the default is safe - just documented so load order intent isn't ambiguous if
+// another addon/mod also mixes into this method.
+@Mixin(value = LivingEntity.class, priority = 1000)
 public class LivingEntityMixin {
     @Inject(method = "die", at = @At("HEAD"))
     private void onDeath(DamageSource source, CallbackInfo ci) {

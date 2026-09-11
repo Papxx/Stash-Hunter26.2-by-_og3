@@ -1,5 +1,6 @@
 package com.stashhunter.stashhunter.baritone;
 
+import com.stashhunter.stashhunter.StashHunter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 
@@ -14,15 +15,48 @@ import net.minecraft.core.BlockPos;
  */
 public final class BaritoneBridge {
     private static final String BARITONE_MOD_ID = "baritone-meteor";
+    private static final String EXPECTED_VERSION_PREFIX = "26.2";
     private static Boolean modLoadedCache;
 
     private BaritoneBridge() {}
 
+    /**
+     * True only if Baritone is declared as loaded by Fabric Loader AND its API class is
+     * actually resolvable. Belt-and-suspenders on top of {@code isModLoaded}: a mod can in
+     * principle be registered with Fabric Loader while its jar is missing/corrupted, so this
+     * also probes the class directly. Every subsequent Baritone call is still wrapped in its
+     * own {@code try/catch(Throwable)} regardless - this only avoids attempting those calls at
+     * all when we already know they can't work.
+     */
     public static boolean isModLoaded() {
         if (modLoadedCache == null) {
-            modLoadedCache = FabricLoader.getInstance().isModLoaded(BARITONE_MOD_ID);
+            boolean loaded = FabricLoader.getInstance().isModLoaded(BARITONE_MOD_ID);
+            if (loaded) {
+                try {
+                    Class.forName("baritone.api.BaritoneAPI");
+                } catch (ClassNotFoundException | NoClassDefFoundError e) {
+                    StashHunter.LOG.warn("Baritone mod is registered but its API class couldn't be found - " +
+                        "falling back to the built-in flight controller.", e);
+                    loaded = false;
+                }
+            }
+            if (loaded) {
+                checkVersion();
+            }
+            modLoadedCache = loaded;
         }
         return modLoadedCache;
+    }
+
+    /** Logs a one-time, non-blocking warning if the installed Baritone version looks unexpected. */
+    private static void checkVersion() {
+        FabricLoader.getInstance().getModContainer(BARITONE_MOD_ID).ifPresent(container -> {
+            String version = container.getMetadata().getVersion().getFriendlyString();
+            if (!version.startsWith(EXPECTED_VERSION_PREFIX)) {
+                StashHunter.LOG.warn("Installed Baritone version '{}' doesn't look like a {} build - " +
+                    "pathfinding may not work correctly.", version, EXPECTED_VERSION_PREFIX);
+            }
+        });
     }
 
     /** True only if Baritone is installed and its elytra process (native nether-pathfinder lib) actually loaded. */

@@ -3,6 +3,7 @@ package com.stashhunter.stashhunter.utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.stashhunter.stashhunter.StashHunter;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,7 +45,7 @@ public class DiscordWebhook {
             connection.getResponseCode();
             connection.disconnect();
         } catch (IOException | URISyntaxException e) {
-            e.printStackTrace();
+            StashHunter.LOG.error("Failed to send Discord webhook message", e);
         }
     }
 }

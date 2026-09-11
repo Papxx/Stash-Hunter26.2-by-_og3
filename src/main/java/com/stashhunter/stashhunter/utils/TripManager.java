@@ -3,6 +3,7 @@ package com.stashhunter.stashhunter.utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.stashhunter.stashhunter.StashHunter;
 import meteordevelopment.meteorclient.MeteorClient;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,7 +27,7 @@ public class TripManager {
         try (FileWriter writer = new FileWriter(TRIPS_FILE)) {
             GSON.toJson(trips, writer);
         } catch (IOException e) {
-            e.printStackTrace();
+            StashHunter.LOG.error("Failed to save trips to {}", TRIPS_FILE, e);
         }
     }
 
@@ -39,7 +40,7 @@ public class TripManager {
                     return trips;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                StashHunter.LOG.error("Failed to load trips from {}", TRIPS_FILE, e);
             }
         }
         return new ArrayList<>();
