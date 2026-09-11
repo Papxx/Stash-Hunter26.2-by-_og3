@@ -22,7 +22,7 @@ The mod now features chunk trail tracking algorithms for optimal base finding an
 
 ## Installation
 
-1.  Download the latest version of Stash-Hunter from the [Releases](https://github.com/omtoi101/stash-hunter/releases) page.
+1.  Download the latest version of Stash-Hunter from the [Releases](https://github.com/Papxx/Stash-Hunter26.2-by-_og3/releases) page.
 2.  Make sure you have [Meteor Client](https://meteorclient.com/) installed.
 3.  Place the downloaded `.jar` file into your `mods` folder.
 4.  *(Optional)* Install the [Baritone](https://github.com/MeteorDevelopment/baritone) Fabric mod (26.2 branch) for more precise pathfinding during flight and landing. Stash Hunter works fine without it, using its built-in flight controller instead.
@@ -214,15 +214,15 @@ The `StashHunterHud` provides real-time information about the status of the Stas
 
 To build this project from source, you will need:
 
--   Java 25 or later
+-   A JDK on your `PATH` (or `JAVA_HOME` set) to bootstrap the Gradle wrapper itself. Gradle then auto-provisions the exact JDK 25 toolchain this project builds with, even if you don't have it installed.
 -   Git
 
 Follow these steps:
 
 1.  **Clone the repository:**
     ```sh
-    git clone https://github.com/omtoi101/stash-hunter.git
-    cd stash-hunter
+    git clone https://github.com/Papxx/Stash-Hunter26.2-by-_og3.git
+    cd Stash-Hunter26.2-by-_og3
     ```
 
 2.  **Build the project:**
